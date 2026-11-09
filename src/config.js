@@ -17,6 +17,10 @@ const EnvSchema = z
     EMBED_API_KEY: z.string().optional(),
     EMBED_MODEL: z.string().min(1),
     EMBEDDING_DIM: z.coerce.number().int().positive().max(2000).default(768),
+    EMBED_SEND_DIMENSIONS: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
     OCR_LANGS: z.string().default('fra+eng'),
     OCR_MAX_PAGES: z.coerce.number().int().positive().default(30),
   })

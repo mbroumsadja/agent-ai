@@ -33,6 +33,7 @@ export async function embed(textes, tailleLot = 32) {
     const data = await post(config.EMBED_BASE_URL, config.EMBED_API_KEY, '/embeddings', {
       model: config.EMBED_MODEL,
       input: lot,
+            ...(config.EMBED_SEND_DIMENSIONS ? { dimensions: config.EMBEDDING_DIM } : {}),
     });
     for (const item of data.data.sort((a, b) => a.index - b.index)) {
       if (item.embedding.length !== config.EMBEDDING_DIM) {
