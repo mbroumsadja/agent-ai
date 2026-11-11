@@ -36,6 +36,12 @@ export async function init() {
       embedding   BLOB NOT NULL
     );
     CREATE INDEX IF NOT EXISTS chunks_doc_idx ON chunks(document_id);
+    CREATE TABLE IF NOT EXISTS embed_cache (
+      hash      TEXT NOT NULL,
+      model     TEXT NOT NULL,
+      embedding BLOB NOT NULL,
+      PRIMARY KEY (hash, model)
+    );
   `);
 
   // Garde-fou : on ne mélange pas deux dimensions d'embedding dans la même base
@@ -90,6 +96,24 @@ export async function search(vecteur, { filiere, niveau, topK }) {
         LIMIT ?`
     )
     .all(toBlob(vecteur), filiere ?? null, filiere ?? null, niveau ?? null, niveau ?? null, topK);
+}
+
+// Cache des embeddings : un texte déjà vectorisé n'est jamais renvoyé au fournisseur
+export async function getCache(hashes, model) {
+  const out = new Map();
+  for (let i = 0; i < hashes.length; i += 500) {
+    const lot = hashes.slice(i, i + 500);
+    const rows = db
+      .prepare(`SELECT hash, embedding FROM embed_cache WHERE model = ? AND hash IN (${lot.map(() => '?').join(',')})`)
+      .all(model, ...lot);
+    for (const r of rows) out.set(r.hash, Array.from(new Float32Array(new Uint8Array(r.embedding).buffer)));
+  }
+  return out;
+}
+
+export async function putCache(entries, model) {
+  const ins = db.prepare('INSERT OR IGNORE INTO embed_cache (hash, model, embedding) VALUES (?,?,?)');
+  db.transaction(() => entries.forEach(([hash, vec]) => ins.run(hash, model, toBlob(vec))))();
 }
 
 export async function close() {

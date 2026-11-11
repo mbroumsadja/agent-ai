@@ -17,10 +17,17 @@ const EnvSchema = z
     EMBED_API_KEY: z.string().optional(),
     EMBED_MODEL: z.string().min(1),
     EMBEDDING_DIM: z.coerce.number().int().positive().max(2000).default(768),
+    // Si défini, la dimension est demandée au fournisseur (ex. gemini-embedding-001, 3072 par défaut)
     EMBED_SEND_DIMENSIONS: z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
+    // Plafond de tokens d'embedding par minute (palier gratuit Gemini : 30000). 0 = pas de limite.
+    EMBED_TPM: z.coerce.number().int().min(0).default(25000),
+    EMBED_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(16),
+    EMBED_WINDOW_MS: z.coerce.number().int().positive().default(60000),
+    // Garde-fou : refuse un document qui produirait plus de morceaux que ça
+    MAX_CHUNKS_PER_DOC: z.coerce.number().int().positive().default(400),
     OCR_LANGS: z.string().default('fra+eng'),
     OCR_MAX_PAGES: z.coerce.number().int().positive().default(30),
   })

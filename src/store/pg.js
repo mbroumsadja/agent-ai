@@ -32,6 +32,13 @@ export async function init() {
       embedding   vector(${dim}) NOT NULL
     )`);
   await pool.query('CREATE INDEX IF NOT EXISTS chunks_doc_idx ON chunks(document_id)');
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS embed_cache (
+      hash      text NOT NULL,
+      model     text NOT NULL,
+      embedding vector(${dim}) NOT NULL,
+      PRIMARY KEY (hash, model)
+    )`);
   // HNSW : bon rappel sans entraînement préalable (limite pgvector : 2000 dimensions)
   await pool.query(
     'CREATE INDEX IF NOT EXISTS chunks_embedding_idx ON chunks USING hnsw (embedding vector_cosine_ops)'
@@ -89,6 +96,27 @@ export async function search(vecteur, { filiere, niveau, topK }) {
     [toVector(vecteur), filiere ?? null, niveau ?? null, topK]
   );
   return rows.map((r) => ({ ...r, score: Number(r.score) }));
+}
+
+// Cache des embeddings : un texte déjà vectorisé n'est jamais renvoyé au fournisseur
+export async function getCache(hashes, model) {
+  const out = new Map();
+  if (hashes.length === 0) return out;
+  const { rows } = await pool.query(
+    'SELECT hash, embedding::text AS emb FROM embed_cache WHERE model = $1 AND hash = ANY($2)',
+    [model, hashes]
+  );
+  for (const r of rows) out.set(r.hash, JSON.parse(r.emb));
+  return out;
+}
+
+export async function putCache(entries, model) {
+  for (const [hash, vec] of entries) {
+    await pool.query(
+      'INSERT INTO embed_cache (hash, model, embedding) VALUES ($1,$2,$3::vector) ON CONFLICT DO NOTHING',
+      [hash, model, toVector(vec)]
+    );
+  }
 }
 
 export async function close() {

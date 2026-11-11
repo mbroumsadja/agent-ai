@@ -3,8 +3,9 @@ import multer from 'multer';
 import store from '../store/index.js';
 import { extraireTexte } from '../extract.js';
 import { decouper } from '../chunk.js';
-import { embed } from '../llm.js';
-import { DocumentMetaSchema, IdSchema } from '../schemas.js';
+import { embed, estimerEmbeddings } from '../llm.js';
+import { config } from '../config.js';
+import { DocumentMetaSchema, IdSchema, UploadQuerySchema } from '../schemas.js';
 
 const TYPES = ['application/pdf', 'text/plain', 'image/png', 'image/jpeg'];
 
@@ -21,6 +22,7 @@ documentsRouter.post('/', upload.single('fichier'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ erreur: "Champ 'fichier' manquant" });
     const meta = DocumentMetaSchema.parse(req.body);
+    const { apercu } = UploadQuerySchema.parse(req.query);
     // multer lit le nom en latin1 : on le remet en UTF-8
     const nom = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
 
@@ -29,6 +31,22 @@ documentsRouter.post('/', upload.single('fichier'), async (req, res, next) => {
     if (chunks.length === 0) {
       return res.status(422).json({ erreur: 'Aucun texte exploitable dans ce fichier (même après OCR).' });
     }
+    if (chunks.length > config.MAX_CHUNKS_PER_DOC) {
+      return res.status(413).json({
+        erreur: `Document trop volumineux : ${chunks.length} morceaux (max ${config.MAX_CHUNKS_PER_DOC}). Découpe le fichier ou augmente MAX_CHUNKS_PER_DOC.`,
+      });
+    }
+
+    // Aperçu : coût estimé sans appeler le fournisseur d'embeddings
+    if (apercu) {
+      return res.json({
+        apercu: true,
+        extraction: methode,
+        caracteres: texte.length,
+        ...(await estimerEmbeddings(chunks)),
+      });
+    }
+
     const vecteurs = await embed(chunks);
 
     const doc = await store.insertDocument(

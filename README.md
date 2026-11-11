@@ -23,8 +23,16 @@ SQLite mémorise la dimension des embeddings ; si tu changes de modèle, supprim
 ## Configuration Groq + Gemini
 
 - Génération : Groq (`LLM_BASE_URL=https://api.groq.com/openai/v1`, modèle `llama-3.3-70b-versatile`).
-- Embeddings : Groq n'en fournit pas, donc Gemini (`text-embedding-004`, 768 dimensions) ; `EMBEDDING_DIM=768`.
+- Embeddings : Groq n'en fournit pas, donc Gemini (`gemini-embedding-001` avec `EMBED_SEND_DIMENSIONS=true` et `EMBEDDING_DIM=768`).
 - Les erreurs 429 (limite de débit) sont relancées automatiquement avec attente.
+
+## Maîtriser la consommation d'embeddings
+
+- `EMBED_TPM` : l'API n'envoie jamais plus de ce nombre de tokens par minute au fournisseur et attend si besoin. Un gros PDF est donc indexé plus lentement mais ne dépasse pas ton quota (le dépôt reste ouvert pendant ce temps).
+- Cache : chaque morceau vectorisé est mémorisé (table `embed_cache`). Un nouvel essai après une erreur, ou un fichier redéposé, ne coûte aucun token. Les lots déjà réussis sont conservés même si un lot ultérieur échoue.
+- Aperçu : `POST /api/documents?apercu=true` renvoie le nombre de morceaux, les tokens estimés et la durée, sans rien appeler ni enregistrer. À utiliser avant un gros fichier.
+- `MAX_CHUNKS_PER_DOC` : refuse (413) un document trop volumineux.
+- Si ton quota de 30 000 est un total (journalier) et non par minute, un document de plus de 30 000 tokens ne passera pas : utilise Ollama en local (`EMBED_BASE_URL=http://localhost:11434/v1`, `EMBED_MODEL=nomic-embed-text`, `EMBEDDING_DIM=768`, `EMBED_SEND_DIMENSIONS=false`).
 
 ## Endpoints
 
@@ -50,4 +58,3 @@ curl -X POST localhost:4000/api/qcm -H 'Content-Type: application/json' \
 
 - `EMBEDDING_DIM` doit correspondre au modèle d'embedding ; changer de modèle impose de recréer la table `chunks`.
 - Cet essai n'a pas d'authentification : à brancher sur le JWT de CampusEdu avant toute exposition (et rate-limiting par IP).
-

@@ -1,0 +1,3 @@
+Notes de cours : Python
+Une boucle for parcourt les elements d'une liste. Une boucle while repete un bloc tant qu'une condition reste vraie.
+Pour definir une fonction, on utilise le mot-cle def. Une liste se cree avec des crochets, par exemple notes = [12, 15, 9].

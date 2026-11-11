@@ -8,6 +8,13 @@ export const DocumentMetaSchema = z.object({
   niveau: optionnel,
 });
 
+export const UploadQuerySchema = z.object({
+  apercu: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+});
+
 export const AskSchema = z.object({
   question: z.string().trim().min(3).max(1000),
   filiere: optionnel,

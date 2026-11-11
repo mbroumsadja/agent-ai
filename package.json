@@ -6,7 +6,8 @@
   "scripts": {
     "migrate": "node src/migrate.js",
     "dev": "node --watch src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test:extract": "node tests/extract.test.js"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
